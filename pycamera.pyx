@@ -44,12 +44,75 @@ cimport numpy as np
 import cython
 import time
 
-cdef extern from 'cameraSDKStub.h':
-    bool WaitForInitialization()
-    void Shutdown()
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' namespace 'CameraLibrary':
+    cdef cppclass Camera:
+        int Serial()
 
-def py_wait_for_initialization():
-    return WaitForInitialization()
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary':
+    cdef cppclass CameraManager:
+        bool WaitForInitialization()
+        bool AreCamerasInitialized()
+        bool AreCamerasShutdown()
+        Camera* GetCamera()
+        void Shutdown()
 
-def shutdown():
-    Shutdown()
+        double TimeStamp()
+
+    cdef cppclass CameraList:
+        int Count()
+        void Refresh()
+
+
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary::CameraManager':
+    cdef CameraManager& X()
+    cdef void DestroyInstance()
+    cdef void DeleteAll()
+
+
+#cdef class PyCamera:
+#    cdef Camera *thisptr
+#
+#    def __cinit__(self):
+#        self.thisptr = 
+
+cdef class PyCameraManager:
+    cdef CameraManager *thisptr
+    cdef CameraList *cl
+
+    def __cinit__(self):
+        self.thisptr = &X()
+        self.cl = new CameraList()
+    def __dealloc__(self):
+        DestroyInstance()
+    def wait_for_initialization(self):
+        return self.thisptr.WaitForInitialization()
+    def are_cameras_initialized(self):
+        return self.thisptr.AreCamerasInitialized()
+    def are_cameras_shutdown(self):
+        return self.thisptr.AreCamerasShutdown()
+    def shutdown(self):
+        self.thisptr.Shutdown()
+    def count_cameras(self):
+        self.cl.Refresh()
+        return self.cl.Count()
+    def get_timestamp(self):
+        return self.thisptr.TimeStamp()
+    def get_cam_serial(self):
+        cdef Camera *c
+        c = self.thisptr.GetCamera()
+        print(c)
+        return c.Serial()
+
+
+
+
+
+#cdef extern from 'cameraSDKStub.h':
+#    bool WaitForInitialization()
+#    void Shutdown()
+#
+#def py_wait_for_initialization():
+#    return WaitForInitialization()
+#
+#def shutdown():
+#    Shutdown()
