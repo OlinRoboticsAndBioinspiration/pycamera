@@ -44,7 +44,8 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 #import numpy
 
-sources = ["pycamera.pyx", "cameraSDKStub.cpp"]
+#sources = ["pycamera.pyx", "cameraSDKStub.cpp"]
+sources = ["pycamera.pyx"]
 include_dirs = ["C:\Program Files (x86)\OptiTrack\Camera SDK\include",
                 r"C:\Python27\Lib\site-packages\numpy\core\include"]
 library_dirs = ["C:\Program Files (x86)\OptiTrack\Camera SDK\lib"]
