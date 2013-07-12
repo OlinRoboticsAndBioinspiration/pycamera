@@ -44,46 +44,160 @@ cimport numpy as np
 import cython
 import time
 
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' namespace 'CameraLibrary':
-    cdef cppclass Camera:
-        int Serial()
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratypes.h' namespace 'CameraLibrary':
+    cdef enum eCameraState:
+        Unitialized = 0,
+        InitializingDevice,
+        InitializingCamera,
+        Initializing,
+        WaitingForChildDevices,
+        WaitingForDeviceInitialization,
+        Initialized,
+        Disconnected,
+        Shutdown
+
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary':
+    ctypedef char* const_char_ptr "const char*"
+
     cdef cppclass CameraManager:
         bool WaitForInitialization()
         bool AreCamerasInitialized()
         bool AreCamerasShutdown()
-        Camera* GetCamera()
         void Shutdown()
+        Camera* GetCameraBySerial(int Serial)
+        Camera* GetCamera(int UID)
+        Camera* GetCamera()
+        void GetCameraList(CameraList &List)
 
         double TimeStamp()
+        void ResetTimeStamp()
 
     cdef cppclass CameraList:
+        CameraEntry& operator[](int index)
         int Count()
         void Refresh()
+
+    cdef cppclass CameraEntry:
+        int UID()
+        int Serial()
+        int Revision()
+        const char* Name()
+        eCameraState State()
+        bool IsVirtual()
+
+
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' namespace 'CameraLibrary':
+    cdef cppclass Camera:
+        Camera()
+
+        void PacketTest(int PacketCount)
+
+        #Frame* GetFrame()
+        #Frame* GetLatestFrame()
+
+        const char* Name()
+
+        void Start()
+        void Stop(bool TurnNumericOff = true)
+
+        bool IsCameraRunning()
+
+        void Release()
+
+        void SetNumeric(bool Enabled, int Value)
+        void SetExposure(int Value)
+        void SetThreshold(int Value)
+        void SetIntensity(int Value)
+        void SetPrecisionCap(int Value)
+        void SetShutterDelay(int Value)
+
+        void SetFrameRate(int value)
+        int FrameRate()
+
+
 
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary::CameraManager':
     cdef CameraManager& X()
-    cdef void DestroyInstance()
-    cdef void DeleteAll()
 
+cdef PyCameraEntry Pce_Factory(CameraEntry *ce):
+    cdef PyCameraEntry pce = PyCameraEntry.__new__(PyCameraEntry)
+    pce.thisptr = ce
+    return pce
 
-#cdef class PyCamera:
-#    cdef Camera *thisptr
-#
-#    def __cinit__(self):
-#        self.thisptr = 
+cdef PyCamera PyCameraFactory(Camera *cam):
+    cdef PyCamera pycam = PyCamera.__new__(PyCamera)
+    pycam.thisptr = cam
+    return pycam
+
+#@cython.final
+#@cython.internal
+cdef class PyCamera:
+    cdef Camera *thisptr
+
+    def get_name(self):
+        return self.thisptr.Name()
+    def start(self):
+        self.thisptr.Start()
+    def is_camera_running(self):
+        return self.thisptr.IsCameraRunning()
+    def set_numeric(self, enabled, value):
+        self.thisptr.SetNumeric(enabled, value)
+    def get_framerate(self):
+        return self.thisptr.FrameRate()
+
+@cython.final
+@cython.internal
+cdef class PyCameraEntry:
+    cdef CameraEntry *thisptr
+
+    py_cam_state = ['Unitialized',
+        'InitializingDevice',
+        'InitializingCamera',
+        'Initializing',
+        'WaitingForChildDevices',
+        'WaitingForDeviceInitialization',
+        'Initialized',
+        'Disconnected',
+        'Shutdown']
+
+    def get_uid(self):
+        return self.thisptr.UID()
+    def get_serial(self):
+        return self.thisptr.Serial()
+    def get_revision(self):
+        return self.thisptr.Revision()
+    def get_name(self):
+        return self.thisptr.Name()
+    def get_state(self):
+        state = self.thisptr.State()
+        return self.py_cam_state[state]
+    def is_virtual(self):
+        return self.thisptr.IsVirtual()
+
+cdef class PyCameraList:
+    cdef CameraList *thisptr
+
+    def __cinit__(self):
+        self.thisptr = new CameraList()
+    def __dealloc__(self):
+        del self.thisptr
+    def __getitem__(self, index):
+        return Pce_Factory(&self.thisptr[0][index])
+    def get_count(self):
+        return self.thisptr.Count()
+    def refresh(self):
+        self.thisptr.Refresh()
+
 
 cdef class PyCameraManager:
     cdef CameraManager *thisptr
-    cdef CameraList *cl
 
     def __cinit__(self):
         self.thisptr = &X()
-        self.cl = new CameraList()
     def __dealloc__(self):
-        DestroyInstance()
+        self.thisptr.Shutdown()
     def wait_for_initialization(self):
         return self.thisptr.WaitForInitialization()
     def are_cameras_initialized(self):
@@ -92,27 +206,13 @@ cdef class PyCameraManager:
         return self.thisptr.AreCamerasShutdown()
     def shutdown(self):
         self.thisptr.Shutdown()
-    def count_cameras(self):
-        self.cl.Refresh()
-        return self.cl.Count()
+    def get_camera_by_serial(self, serial):
+        return PyCameraFactory(self.thisptr.GetCameraBySerial(serial))
+    def get_camera(self, uid):
+        return PyCameraFactory(self.thisptr.GetCamera(uid))
+    def get_camera_list(self, PyCameraList pcl):
+        self.thisptr.GetCameraList(cython.operator.dereference(pcl.thisptr))
     def get_timestamp(self):
         return self.thisptr.TimeStamp()
-    def get_cam_serial(self):
-        cdef Camera *c
-        c = self.thisptr.GetCamera()
-        print(c)
-        return c.Serial()
-
-
-
-
-
-#cdef extern from 'cameraSDKStub.h':
-#    bool WaitForInitialization()
-#    void Shutdown()
-#
-#def py_wait_for_initialization():
-#    return WaitForInitialization()
-#
-#def shutdown():
-#    Shutdown()
+    def reset_timestamp(self):
+        self.thisptr.ResetTimeStamp()
