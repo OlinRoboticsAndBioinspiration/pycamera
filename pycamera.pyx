@@ -56,6 +56,36 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratype
         Disconnected,
         Shutdown
 
+    cdef enum eVideoMode:
+        SegmentMode              = 0,
+        GrayscaleMode            = 1,
+        ObjectMode               = 2,
+        InterleavedGrayscaleMode = 3,
+        PrecisionMode            = 4,
+        BitPackedPrecisionMode   = 5,
+        MJPEGMode                = 6,
+        MJPEGPreviewMode         = 7,
+        SynchronizationTelemetry = 99,
+        VideoModeCount               ,
+        UnknownMode
+
+    ctypedef struct sTimeCode:
+        sTimeCode()
+
+        unsigned int TimeCode
+        unsigned int TimeCodeSubFrame
+        unsigned int TimeCodeDropFrame
+        bool Valid
+
+        int Hours()
+        int Minutes()
+        int Seconds()
+        int Frame()
+        int SubFrame()
+        bool IsDropFrame()
+
+        void Stringify(char *Buffer, int BufferSize)
+
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary':
     ctypedef char* const_char_ptr "const char*"
@@ -65,9 +95,9 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramana
         bool AreCamerasInitialized()
         bool AreCamerasShutdown()
         void Shutdown()
-        Camera* GetCameraBySerial(int Serial)
-        Camera* GetCamera(int UID)
-        Camera* GetCamera()
+        Camera* GetCameraBySerial(int Serial) except +
+        Camera* GetCamera(int UID) except +
+        Camera* GetCamera() except +
         void GetCameraList(CameraList &List)
 
         double TimeStamp()
@@ -86,6 +116,10 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramana
         eCameraState State()
         bool IsVirtual()
 
+# Static method X() is a member of the Singleton class template. Calling X() returns the 
+# reference to the single allowable instance of a CameraManager
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary::CameraManager':
+    cdef CameraManager& X()
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' namespace 'CameraLibrary':
     cdef cppclass Camera:
@@ -93,19 +127,19 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' 
 
         void PacketTest(int PacketCount)
 
-        #Frame* GetFrame()
-        #Frame* GetLatestFrame()
+        Frame* GetFrame()
+        Frame* GetLatestFrame()
 
         const char* Name()
 
         void Start()
         void Stop(bool TurnNumericOff = true)
 
-        bool IsCameraRunning()
+        bool IsCameraRunning() except +
 
         void Release()
 
-        void SetNumeric(bool Enabled, int Value)
+        void SetNumeric(bool Enabled, int Value) except +
         void SetExposure(int Value)
         void SetThreshold(int Value)
         void SetIntensity(int Value)
@@ -115,11 +149,64 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' 
         void SetFrameRate(int value)
         int FrameRate()
 
+cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\\frame.h' namespace 'CameraLibrary':
+    cdef cppclass Frame:
+        Frame()
+
+        int ObjectCount()
+        int FrameID()
+        eVideoMode FrameType()
+        int MJPEGQuality()
+
+        #cObject* Object(int index)
+        #ObjectLink* GetLink(int index)
+        Camera* GetCamera()
+
+        bool IsInvalid()
+        bool IsEmpty()
+        bool Grayscale()
+
+        int Width()
+        int Height()
+
+        double Timestamp()
+
+        bool IsSynchInfoValid()
+
+        bool IsTimeCodeValid()
+        bool IsExternalLocked()
+        bool IsRecording()
+
+        sTimeCode TimeCode()
+
+        unsigned long long HardwareTimeStamp()
+        bool IsHardwareTimeStamp()
+        unsigned int HardwareTimeFreq()
+        bool MasterTimingDevice()
+
+        void Release()
+
+        int RefCount()
+        void AddRef()
+
+        void Rasterize(unsigned int Width, unsigned int Height, unsigned int Span,
+                unsigned int BitsPerPixel, void *Buffer)
+        #void Rasterize(Bitmap *BitmapRef)
+
+        int JPEGImageSize()
+        int JPEGImage(unsigned char *Buffer, int BufferSize)
+
+        #void PopulateFrom(CompressedFrame *Frame)
+
+        unsigned char* GetGrayscaleData()
+        int GetGrayscaleDataSize()
+
+        void SetObjectCount(int Count)
+        void RemoveObject(int Index)
+
+        bool HardwareRecording()
 
 
-
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary::CameraManager':
-    cdef CameraManager& X()
 
 cdef PyCameraEntry Pce_Factory(CameraEntry *ce):
     cdef PyCameraEntry pce = PyCameraEntry.__new__(PyCameraEntry)
@@ -131,17 +218,29 @@ cdef PyCamera PyCameraFactory(Camera *cam):
     pycam.thisptr = cam
     return pycam
 
-#@cython.final
-#@cython.internal
+@cython.final
+@cython.internal
 cdef class PyCamera:
     cdef Camera *thisptr
 
+    def __dealloc__(self):
+        self.thisptr.Stop()
+        self.thisptr.Release()
+
     def get_name(self):
         return self.thisptr.Name()
+
     def start(self):
         self.thisptr.Start()
+    def stop(self):
+        self.thisptr.Stop()
+
     def is_camera_running(self):
         return self.thisptr.IsCameraRunning()
+
+    def release(self):
+        self.thisptr.Release()
+
     def set_numeric(self, enabled, value):
         self.thisptr.SetNumeric(enabled, value)
     def get_framerate(self):
