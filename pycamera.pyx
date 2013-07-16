@@ -86,22 +86,21 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratype
 
         void Stringify(char *Buffer, int BufferSize)
 
-
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary':
     ctypedef char* const_char_ptr "const char*"
 
     cdef cppclass CameraManager:
-        bool WaitForInitialization()
-        bool AreCamerasInitialized()
-        bool AreCamerasShutdown()
-        void Shutdown()
+        bool WaitForInitialization() except +
+        bool AreCamerasInitialized() except +
+        bool AreCamerasShutdown() except +
+        void Shutdown() except +
         Camera* GetCameraBySerial(int Serial) except +
         Camera* GetCamera(int UID) except +
         Camera* GetCamera() except +
-        void GetCameraList(CameraList &List)
+        void GetCameraList(CameraList &List) except +
 
-        double TimeStamp()
-        void ResetTimeStamp()
+        double TimeStamp() except +
+        void ResetTimeStamp() except +
 
     cdef cppclass CameraList:
         CameraEntry& operator[](int index)
@@ -127,27 +126,32 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' 
 
         void PacketTest(int PacketCount)
 
-        Frame* GetFrame()
-        Frame* GetLatestFrame()
+        Frame* GetFrame() except +
+        Frame* GetLatestFrame() except +
 
-        const char* Name()
+        const char* Name() except +
 
-        void Start()
-        void Stop(bool TurnNumericOff = true)
+        void Start() except +
+        void Stop(bool TurnNumericOff = true) except +
 
         bool IsCameraRunning() except +
 
-        void Release()
+        void Release() except +
 
         void SetNumeric(bool Enabled, int Value) except +
-        void SetExposure(int Value)
-        void SetThreshold(int Value)
-        void SetIntensity(int Value)
-        void SetPrecisionCap(int Value)
-        void SetShutterDelay(int Value)
+        void SetExposure(int Value) except +
+        int Exposure()
+        void SetThreshold(int Value) except +
+        int Threshold()
+        void SetIntensity(int Value) except +
+        int Intensity()
+        void SetPrecisionCap(int Value) except +
+        int PrecisionCap()
+        void SetShutterDelay(int Value) except +
+        int ShutterDelay()
 
-        void SetFrameRate(int value)
-        int FrameRate()
+        void SetFrameRate(int value) except +
+        int FrameRate() except +
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\\frame.h' namespace 'CameraLibrary':
     cdef cppclass Frame:
@@ -206,8 +210,6 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\\frame.h' 
 
         bool HardwareRecording()
 
-
-
 cdef PyCameraEntry Pce_Factory(CameraEntry *ce):
     cdef PyCameraEntry pce = PyCameraEntry.__new__(PyCameraEntry)
     pce.thisptr = ce
@@ -243,6 +245,29 @@ cdef class PyCamera:
 
     def set_numeric(self, enabled, value):
         self.thisptr.SetNumeric(enabled, value)
+    def set_exposure(self, value):
+        self.thisptr.SetExposure(value)
+    def get_exposure(self):
+        return self.thisptr.Exposure()
+    def set_threshold(self, value):
+        self.thisptr.SetThreshold(value)
+    def get_threshold(self):
+        return self.thisptr.Threshold()
+    def set_intensity(self, value):
+        self.thisptr.SetIntensity(value)
+    def get_intensity(self):
+        return self.thisptr.Intensity()
+    def set_precision_cap(self, value):
+        self.thisptr.SetPrecisionCap(value)
+    def get_precision_cap(self):
+        return self.thisptr.PrecisionCap()
+    def set_shutter_delay(self, value):
+        self.thisptr.SetShutterDelay(value)
+    def get_shutter_delay(self):
+        return self.thisptr.ShutterDelay()
+
+    def set_framerate(self, value):
+        self.thisptr.SetFrameRate(value)
     def get_framerate(self):
         return self.thisptr.FrameRate()
 
@@ -307,8 +332,10 @@ cdef class PyCameraManager:
         self.thisptr.Shutdown()
     def get_camera_by_serial(self, serial):
         return PyCameraFactory(self.thisptr.GetCameraBySerial(serial))
-    def get_camera(self, uid):
+    def get_camera_by_uid(self, uid):
         return PyCameraFactory(self.thisptr.GetCamera(uid))
+    def get_camera(self):
+        return PyCameraFactory(self.thisptr.GetCamera())
     def get_camera_list(self, PyCameraList pcl):
         self.thisptr.GetCameraList(cython.operator.dereference(pcl.thisptr))
     def get_timestamp(self):
