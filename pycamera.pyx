@@ -45,16 +45,16 @@ import cython
 import time
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratypes.h' namespace 'CameraLibrary':
-    ctypedef enum eCameraState:
-        Unitialized = 0,
-        InitializingDevice,
-        InitializingCamera,
-        Initializing,
-        WaitingForChildDevices,
-        WaitingForDeviceInitialization,
-        Initialized,
-        Disconnected,
-        Shutdown
+#    ctypedef enum eCameraState:
+#        Unitialized = 0,
+#        InitializingDevice,
+#        InitializingCamera,
+#        Initializing,
+#        WaitingForChildDevices,
+#        WaitingForDeviceInitialization,
+#        Initialized,
+#        Disconnected,
+#        Shutdown
 
     ctypedef enum eVideoMode:
         SegmentMode              = 0,
