@@ -45,7 +45,7 @@ import cython
 import time
 
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratypes.h' namespace 'CameraLibrary':
-    cdef enum eCameraState:
+    ctypedef enum eCameraState:
         Unitialized = 0,
         InitializingDevice,
         InitializingCamera,
@@ -56,7 +56,7 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratype
         Disconnected,
         Shutdown
 
-    cdef enum eVideoMode:
+    ctypedef enum eVideoMode:
         SegmentMode              = 0,
         GrayscaleMode            = 1,
         ObjectMode               = 2,
@@ -153,6 +153,9 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' 
         void SetFrameRate(int value) except +
         int FrameRate() except +
 
+        void SetVideoType(eVideoMode Value)
+        eVideoMode VideoType()
+
 cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\\frame.h' namespace 'CameraLibrary':
     cdef cppclass Frame:
         Frame()
@@ -225,6 +228,19 @@ cdef PyCamera PyCameraFactory(Camera *cam):
 cdef class PyCamera:
     cdef Camera *thisptr
 
+    py_video_mode = ['Unitialized',
+        'SegmentMode',
+        'GrayscaleMode',
+        'ObjectMode',
+        'InterleavedGrayscaleMode ',
+        'PrecisionMode',
+        'BitPackedPrecisionMode ',
+        'MJPEGMode',
+        'MJPEGPreviewMode',
+        'SynchronizationTelemetry',
+        'VideoModeCount',
+        'UnknownMode']
+
     def __dealloc__(self):
         self.thisptr.Stop()
         self.thisptr.Release()
@@ -271,10 +287,24 @@ cdef class PyCamera:
     def get_framerate(self):
         return self.thisptr.FrameRate()
 
+    def set_video_type(self, value):
+        self.thisptr.SetVideoType(
+
 @cython.final
 @cython.internal
 cdef class PyCameraEntry:
     cdef CameraEntry *thisptr
+
+#    cdef:
+#        readonly int UNINITIALIZED
+#        readonly int INITIALIZING_DEVICE
+#        readonly int INITIALIZING_CAMERA
+#        readonly int INITIALIZING
+#        readonly int WAITING_FOR_CHILD_DEVICES
+#        readonly int WAIITING_FOR_DEVICE_INITIALIZATION
+#        readonly int INITIALIZED
+#        readonly int DISCONNECTED
+#        readonly int SHUTDOWN
 
     py_cam_state = ['Unitialized',
         'InitializingDevice',
@@ -285,6 +315,7 @@ cdef class PyCameraEntry:
         'Initialized',
         'Disconnected',
         'Shutdown']
+
 
     def get_uid(self):
         return self.thisptr.UID()
