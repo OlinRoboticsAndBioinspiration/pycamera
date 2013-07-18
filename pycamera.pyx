@@ -44,206 +44,233 @@ cimport numpy as np
 import cython
 import time
 
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameratypes.h' namespace 'CameraLibrary':
-    ctypedef enum eCameraState:
-        Unitialized = 0,
-        InitializingDevice,
-        InitializingCamera,
-        Initializing,
-        WaitingForChildDevices,
-        WaitingForDeviceInitialization,
-        Initialized,
-        Disconnected,
-        Shutdown
+cimport cameratypes as ct
+cimport cameramanager
+cimport camera
+cimport frame
 
-    ctypedef enum eVideoMode:
-        SegmentMode              = 0,
-        GrayscaleMode            = 1,
-        ObjectMode               = 2,
-        InterleavedGrayscaleMode = 3,
-        PrecisionMode            = 4,
-        BitPackedPrecisionMode   = 5,
-        MJPEGMode                = 6,
-        MJPEGPreviewMode         = 7,
-        SynchronizationTelemetry = 99,
-        VideoModeCount               ,
-        UnknownMode
+@cython.internal
+cdef class _CameraState:
+    cdef:
+        readonly int UNINITIALIZED
+        readonly int INITIALIZING_DEVICE
+        readonly int INITIALIZING_CAMERA
+        readonly int INITIALIZING
+        readonly int WAITING_FOR_CHILD_DEVICES
+        readonly int WAITING_FOR_DEVICE_INITIALIZATION
+        readonly int INITIALIZED
+        readonly int DISCONNECTED
+        readonly int SHUTDOWN
 
-    ctypedef struct sTimeCode:
-        sTimeCode()
+    def __cinit__(self):
+        self.UNINITIALIZED = ct.CS_UNINITIALIZED
+        self.INITIALIZING_DEVICE = ct.CS_INITIALIZING_DEVICE
+        self.INITIALIZING_CAMERA = ct.CS_INITIALIZING_CAMERA
+        self.INITIALIZING = ct.CS_INITIALIZING
+        self.WAITING_FOR_CHILD_DEVICES = ct.CS_WAITING_FOR_CHILD_DEVICES
+        self.WAITING_FOR_DEVICE_INITIALIZATION = ct.CS_WAITING_FOR_DEVICE_INITIALIZATION
+        self.INITIALIZED = ct.CS_INITIALIZED
+        self.DISCONNECTED = ct.CS_DISCONNECTED
+        self.SHUTDOWN = ct.CS_SHUTDOWN
 
-        unsigned int TimeCode
-        unsigned int TimeCodeSubFrame
-        unsigned int TimeCodeDropFrame
-        bool Valid
+    def __dict__(self):
+        attr_dict = {self.UNINITIALIZED : 'UNINITIALIZED',
+                     self.INITIALIZING_DEVICE : 'INITIALIZING_DEVICE',
+                     self.INITIALIZING_CAMERA : 'INITIALIZING_CAMERA',
+                     self.INITIALIZING : 'INITIALIZING',
+                     self.WAITING_FOR_CHILD_DEVICES : 'WAITING_FOR_CHILD_DEVICES',
+                     self.WAITING_FOR_DEVICE_INITIALIZATION : 'WAITING_FOR_DEVICE_INITIALIZATION',
+                     self.INITIALIZED : 'INITIALIZED',
+                     self.DISCONNECTED : 'DISCONNECTED',
+                     self.SHUTDOWN : 'SHUTDOWN'}
+        return attr_dict
 
-        int Hours()
-        int Minutes()
-        int Seconds()
-        int Frame()
-        int SubFrame()
-        bool IsDropFrame()
+CameraState = _CameraState()
 
-        void Stringify(char *Buffer, int BufferSize)
+@cython.internal
+cdef class _VideoMode:
+    cdef:
+        readonly int VM_SEGMENT_MODE
+        readonly int VM_GRAYSCALE_MODE
+        readonly int VM_OBJECT_MODE
+        readonly int VM_INTERLEAVED_GRAYSCALE_MODE
+        readonly int VM_PRECISION_MODE
+        readonly int VM_BIT_PACKED_PRECISION_MODE
+        readonly int VM_MJPEG_MODE
+        readonly int VM_MJPEG_PREVIEW_MODE
+        readonly int VM_SYNCHRONIZATION_TELEMETRY
+        readonly int VM_VIDEO_MODE_COUNT
+        readonly int VM_UKNOWN_MODE
 
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary':
-    ctypedef char* const_char_ptr "const char*"
 
-    cdef cppclass CameraManager:
-        bool WaitForInitialization() except +
-        bool AreCamerasInitialized() except +
-        bool AreCamerasShutdown() except +
-        void Shutdown() except +
-        Camera* GetCameraBySerial(int Serial) except +
-        Camera* GetCamera(int UID) except +
-        Camera* GetCamera() except +
-        void GetCameraList(CameraList &List) except +
+    def __cinit__(self):
+        self.VM_SEGMENT_MODE = ct.VM_SEGMENT_MODE
+        self.VM_GRAYSCALE_MODE = ct.VM_GRAYSCALE_MODE
+        self.VM_OBJECT_MODE = ct.VM_OBJECT_MODE
+        self.VM_INTERLEAVED_GRAYSCALE_MODE = ct.VM_INTERLEAVED_GRAYSCALE_MODE
+        self.VM_PRECISION_MODE = ct.VM_PRECISION_MODE
+        self.VM_BIT_PACKED_PRECISION_MODE = ct.VM_BIT_PACKED_PRECISION_MODE
+        self.VM_MJPEG_MODE = ct.VM_MJPEG_MODE
+        self.VM_MJPEG_PREVIEW_MODE = ct.VM_MJPEG_PREVIEW_MODE
+        self.VM_SYNCHRONIZATION_TELEMETRY = ct.VM_SYNCHRONIZATION_TELEMETRY
+        self.VM_VIDEO_MODE_COUNT = ct.VM_VIDEO_MODE_COUNT
+        self.VM_UKNOWN_MODE = ct.VM_UKNOWN_MODE
 
-        double TimeStamp() except +
-        void ResetTimeStamp() except +
+    def __dict__(self):
+        attr_dict = {self.VM_SEGMENT_MODE : 'VM_SEGMENT_MODE',
+                     self.VM_GRAYSCALE_MODE : 'VM_GRAYSCALE_MODE',
+                     self.VM_OBJECT_MODE : 'VM_OBJECT_MODE',
+                     self.VM_INTERLEAVED_GRAYSCALE_MODE : 'VM_INTERLEAVED_GRAYSCALE_MODE',
+                     self.VM_PRECISION_MODE : 'VM_PRECISION_MODE',
+                     self.VM_BIT_PACKED_PRECISION_MODE : 'VM_BIT_PACKED_PRECISION_MODE',
+                     self.VM_MJPEG_MODE : 'VM_MJPEG_MODE',
+                     self.VM_MJPEG_PREVIEW_MODE : 'VM_MJPEG_PREVIEW_MODE',
+                     self.VM_SYNCHRONIZATION_TELEMETRY : 'VM_SYNCHRONIZATION_TELEMETRY',
+                     self.VM_VIDEO_MODE_COUNT : 'VM_VIDEO_MODE_COUNT',
+                     self.VM_UKNOWN_MODE : 'VM_UKNOWN_MODE'}
+        return attr_dict
 
-    cdef cppclass CameraList:
-        CameraEntry& operator[](int index)
-        int Count()
-        void Refresh()
+VideoMode = _VideoMode()
 
-    cdef cppclass CameraEntry:
-        int UID()
-        int Serial()
-        int Revision()
-        const char* Name()
-        eCameraState State()
-        bool IsVirtual()
+cdef class PyTimeCode:
+    cdef ct.sTimeCode time
 
-# Static method X() is a member of the Singleton class template. Calling X() returns the 
-# reference to the single allowable instance of a CameraManager
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\cameramanager.h' namespace 'CameraLibrary::CameraManager':
-    cdef CameraManager& X()
+    def get_hours(self):
+        return self.time.Hours()
+    def get_seconds(self):
+        return self.time.Seconds()
+    def get_minutes(self):
+        return self.time.Minutes()
+    def get_frame(self):
+        return self.time.Frame()
+    def get_subframe(self):
+        return self.time.SubFrame()
 
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\camera.h' namespace 'CameraLibrary':
-    cdef cppclass Camera:
-        Camera()
+    # TODO
+    # Uncommenting the following code yields "unresolved externals" error
+    # Apparently this method isn't in the dll?
 
-        void PacketTest(int PacketCount)
+    #def is_drop_frame(self):
+    #    return self.time.IsDropFrame()
 
-        Frame* GetFrame() except +
-        Frame* GetLatestFrame() except +
+    # TODO
+    # declaration of char* is throwing an error from the compiler
+    # related to post parsing
 
-        const char* Name() except +
+    #cdef char* string_rep = NULL
+    #cdef Py_ssize_t length = 0
+    #cdef bytes result
 
-        void Start() except +
-        void Stop(bool TurnNumericOff = true) except +
+    #def stringify(self, string_rep, length):
+    #    self.thisptr.Stringify(&string_rep, &length)
+    #    result = string_rep
+    #    return result
 
-        bool IsCameraRunning() except +
-
-        void Release() except +
-
-        void SetNumeric(bool Enabled, int Value) except +
-        void SetExposure(int Value) except +
-        int Exposure()
-        void SetThreshold(int Value) except +
-        int Threshold()
-        void SetIntensity(int Value) except +
-        int Intensity()
-        void SetPrecisionCap(int Value) except +
-        int PrecisionCap()
-        void SetShutterDelay(int Value) except +
-        int ShutterDelay()
-
-        void SetFrameRate(int value) except +
-        int FrameRate() except +
-
-        void SetVideoType(eVideoMode Value)
-        eVideoMode VideoType()
-
-cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\\frame.h' namespace 'CameraLibrary':
-    cdef cppclass Frame:
-        Frame()
-
-        int ObjectCount()
-        int FrameID()
-        eVideoMode FrameType()
-        int MJPEGQuality()
-
-        #cObject* Object(int index)
-        #ObjectLink* GetLink(int index)
-        Camera* GetCamera()
-
-        bool IsInvalid()
-        bool IsEmpty()
-        bool Grayscale()
-
-        int Width()
-        int Height()
-
-        double Timestamp()
-
-        bool IsSynchInfoValid()
-
-        bool IsTimeCodeValid()
-        bool IsExternalLocked()
-        bool IsRecording()
-
-        sTimeCode TimeCode()
-
-        unsigned long long HardwareTimeStamp()
-        bool IsHardwareTimeStamp()
-        unsigned int HardwareTimeFreq()
-        bool MasterTimingDevice()
-
-        void Release()
-
-        int RefCount()
-        void AddRef()
-
-        void Rasterize(unsigned int Width, unsigned int Height, unsigned int Span,
-                unsigned int BitsPerPixel, void *Buffer)
-        #void Rasterize(Bitmap *BitmapRef)
-
-        int JPEGImageSize()
-        int JPEGImage(unsigned char *Buffer, int BufferSize)
-
-        #void PopulateFrom(CompressedFrame *Frame)
-
-        unsigned char* GetGrayscaleData()
-        int GetGrayscaleDataSize()
-
-        void SetObjectCount(int Count)
-        void RemoveObject(int Index)
-
-        bool HardwareRecording()
-
-cdef PyCameraEntry Pce_Factory(CameraEntry *ce):
+cdef PyCameraEntry Pce_Factory(cameramanager.CameraEntry *ce):
     cdef PyCameraEntry pce = PyCameraEntry.__new__(PyCameraEntry)
     pce.thisptr = ce
     return pce
 
-cdef PyCamera PyCameraFactory(Camera *cam):
+cdef PyCamera PyCameraFactory(camera.Camera *cam):
     cdef PyCamera pycam = PyCamera.__new__(PyCamera)
     pycam.thisptr = cam
     return pycam
 
+cdef PyFrame PyFrameFactory(frame.Frame *frame):
+    cdef PyFrame pyframe = PyFrame.__new__(PyFrame)
+    pyframe.thisptr = frame
+    return pyframe
+
+
+@cython.final
+@cython.internal
+cdef class PyFrame:
+    cdef frame.Frame *thisptr
+
+    def __dealloc__(self):
+        self.thisptr.Release()
+
+    def get_object_count(self):
+        return self.thisptr.ObjectCount()
+    def get_frame_id(self):
+        return self.thisptr.FrameID()
+    def get_frame_type(self):
+        return self.thisptr.FrameType()
+    def get_mjpeg_quality(self):
+        return self.thisptr.MJPEGQuality()
+
+    # TODO 
+    # Figure out how to deal with returning the camera reference
+    #def get_camera(self):
+    #   return self.GetCamera()
+
+    def is_invalid(self):
+        return self.thisptr.IsInvalid()
+    def is_empty(self):
+        return self.thisptr.IsEmpty()
+    def is_grayscale(self):
+        return self.thisptr.IsGrayscale()
+
+    def get_height(self):
+        return self.thisptr.Height()
+    def get_width(self):
+        return self.thisptr.Width()
+
+    def get_timestamp(self):
+        return self.thisptr.TimeStamp()
+
+    def is_synch_info_valid(self):
+        return self.thisptr.IsSynchInfoValid()
+
+    # TODO
+    # TimeCode is coming back with all zeros. 
+    def is_time_code_valid(self):
+        return self.thisptr.IsTimeCodeValid()
+    def is_external_locked(self):
+        return self.thisptr.IsExternalLocked()
+    def is_recording(self):
+        return self.thisptr.IsRecording()
+
+    def get_timecode(self):
+        tc = PyTimeCode()
+        tc.time = self.thisptr.TimeCode()
+        return tc
+
+    def get_hardware_timestamp(self):
+        return self.thisptr.HardwareTimeStamp()
+    def is_hardware_timestamp(self):
+        return self.thisptr.IsHardwareTimeStamp()
+    def get_hardware_time_freq(self):
+        return self.thisptr.HardwareTimeFreq()
+    def is_master_timing_device(self):
+        return self.thisptr.MasterTimingDevice()
+
+    def release(self):
+        self.thisptr.Release()
+
+    def get_ref_count(self):
+        return self.thisptr.RefCount()
+    def add_ref(self):
+        self.thisptr.AddRef()
+
+    def rasterize(self, width, height, span, bits_per_pixel,
+                  np.ndarray[dtype=cython.uchar, ndim=2, mode='c'] _buffer):
+        self.thisptr.Rasterize(width, height, span, bits_per_pixel,
+                               &_buffer[0,0])
+
 @cython.final
 @cython.internal
 cdef class PyCamera:
-    cdef Camera *thisptr
-
-    py_video_mode = ['Unitialized',
-        'SegmentMode',
-        'GrayscaleMode',
-        'ObjectMode',
-        'InterleavedGrayscaleMode ',
-        'PrecisionMode',
-        'BitPackedPrecisionMode ',
-        'MJPEGMode',
-        'MJPEGPreviewMode',
-        'SynchronizationTelemetry',
-        'VideoModeCount',
-        'UnknownMode']
+    cdef camera.Camera *thisptr
 
     def __dealloc__(self):
         self.thisptr.Stop()
         self.thisptr.Release()
+
+    def get_frame(self):
+        return PyFrameFactory(self.thisptr.GetFrame())
+    def get_latest_frame(self):
+        return PyFrameFactory(self.thisptr.GetLatestFrame())
 
     def get_name(self):
         return self.thisptr.Name()
@@ -288,34 +315,14 @@ cdef class PyCamera:
         return self.thisptr.FrameRate()
 
     def set_video_type(self, value):
-        self.thisptr.SetVideoType(
+        self.thisptr.SetVideoType(value)
+    def get_video_type(self):
+        return self.thisptr.VideoType()
 
 @cython.final
 @cython.internal
 cdef class PyCameraEntry:
-    cdef CameraEntry *thisptr
-
-#    cdef:
-#        readonly int UNINITIALIZED
-#        readonly int INITIALIZING_DEVICE
-#        readonly int INITIALIZING_CAMERA
-#        readonly int INITIALIZING
-#        readonly int WAITING_FOR_CHILD_DEVICES
-#        readonly int WAIITING_FOR_DEVICE_INITIALIZATION
-#        readonly int INITIALIZED
-#        readonly int DISCONNECTED
-#        readonly int SHUTDOWN
-
-    py_cam_state = ['Unitialized',
-        'InitializingDevice',
-        'InitializingCamera',
-        'Initializing',
-        'WaitingForChildDevices',
-        'WaitingForDeviceInitialization',
-        'Initialized',
-        'Disconnected',
-        'Shutdown']
-
+    cdef cameramanager.CameraEntry *thisptr
 
     def get_uid(self):
         return self.thisptr.UID()
@@ -326,16 +333,15 @@ cdef class PyCameraEntry:
     def get_name(self):
         return self.thisptr.Name()
     def get_state(self):
-        state = self.thisptr.State()
-        return self.py_cam_state[state]
+        return CameraState[self.thisptr.State()]
     def is_virtual(self):
         return self.thisptr.IsVirtual()
 
 cdef class PyCameraList:
-    cdef CameraList *thisptr
+    cdef cameramanager.CameraList *thisptr
 
     def __cinit__(self):
-        self.thisptr = new CameraList()
+        self.thisptr = new cameramanager.CameraList()
     def __dealloc__(self):
         del self.thisptr
     def __getitem__(self, index):
@@ -347,10 +353,10 @@ cdef class PyCameraList:
 
 
 cdef class PyCameraManager:
-    cdef CameraManager *thisptr
+    cdef cameramanager.CameraManager *thisptr
 
     def __cinit__(self):
-        self.thisptr = &X()
+        self.thisptr = &cameramanager.X()
     def __dealloc__(self):
         self.thisptr.Shutdown()
     def wait_for_initialization(self):
@@ -373,3 +379,5 @@ cdef class PyCameraManager:
         return self.thisptr.TimeStamp()
     def reset_timestamp(self):
         self.thisptr.ResetTimeStamp()
+
+
