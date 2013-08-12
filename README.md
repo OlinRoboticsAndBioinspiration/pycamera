@@ -29,6 +29,7 @@ Example Usage
 -----------
 
 import pycamera as p
+import numpy as np
 
 pcl = p.PyCameraList()
 
@@ -36,7 +37,11 @@ cm = p.CameraManager()
 
 cm.get _ camera _ list()
 
+cam = cm.get _ camera _ by _ serial(<sn>)
+
+
+
 _The order of operations in the above code is very important. Alternative
-approaches (such as instantiating the CmameraManager before the CameraList)
+approaches (such as instantiating the CameraManager before the CameraList)
 have crashed the Python runtime (likely due to a null pointer error)._
 
