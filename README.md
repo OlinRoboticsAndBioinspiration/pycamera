@@ -18,7 +18,7 @@ Compilation and Module Installation
 1) Change to the directory containing all the files you downloaded (the one
 that contains `camera.pxd`, `frame.px`d, etc.)
 
-2) run `python setup.py build _ ext --inplace`
+2) run `python setup.py build_ext --inplace`
 
 3) OPTIONAL - Add the directory where you ran `setup.py` to your PYTHONPATH environment variable (to enable you to load the 
 ycamera
@@ -29,10 +29,10 @@ Example Usage
 -----------
 The sample code below creates a `CameraList` and  
 gets a reference to the `CameraManager`. Calling  
-`get _ camera _ list()` initializes the `CameraList`.  
+`get_camera_list()` initializes the `CameraList`.  
 It then gets a camera, sets the video type and  
 framerate. Once the camera is started,  
-`get _ latest _ frame()` gets the most recent frame.
+`get_latest_frame()` gets the most recent frame.
 A Numpy array is used to store the image and 
 matplotlib functions `imshow()` and `show()` are used
 to visualize the image. 
@@ -43,20 +43,20 @@ import numpy as np
 import ctypes  
 from pylab import imshow, show
 
-IMG _ WIDTH = 832 # Use S250e camera
-IMG _ HEIGHT = 832 
+IMG_WIDTH = 832 # Use S250e camera
+IMG_HEIGHT = 832 
 
 pcl = p.PyCameraList()  
 cm = p.CameraManager()  
-cm.get _ camera _ list()  
-cam = cm.get _ camera _ by _ serial(<sn>)  
-cam.set _ video _ type(p.VideoMode.VM _ MJPEG _ MODE)  
-cam.set _ framerate(250) #Framerate must be supported by camera hardware  
+cm.get_camera_list()  
+cam = cm.get_camera_by_serial(<sn>)  
+cam.set_video_type(p.VideoMode.VM_MJPEG_MODE)  
+cam.set_framerate(250) #Framerate must be supported by camera hardware  
 cam.start()  
-f = cam.get _ latest _ frame()  
-my _ buffer = np.ones((IMG _ WIDTH, IMG _ HEIGHT), dtype=ctypes.c _ ubyte)  
-f.rasterize(IMG _ WIDTH, IMG _ HEIGHT, 0, 8, my _ buffer)  
-imshow(my _ buffer)  
+f = cam.get_latest_frame()  
+my_buffer = np.ones((IMG_WIDTH, IMG_HEIGHT), dtype=ctypes.c_ubyte)  
+f.rasterize(IMG_WIDTH, IMG_HEIGHT, 0, 8, my_buffer)  
+imshow(my_buffer)  
 show()
 ```
 
