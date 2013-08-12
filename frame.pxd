@@ -63,5 +63,3 @@ cdef extern from 'C:\Program Files (x86)\OptiTrack\Camera SDK\include\\frame.h' 
         void RemoveObject(int Index)
 
         bool HardwareRecording()
-
-
