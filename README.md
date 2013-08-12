@@ -27,15 +27,7 @@ ycamera
 
 Example Usage
 -----------
-The sample code below creates a `CameraList` and  
-gets a reference to the `CameraManager`. Calling  
-`get_camera_list()` initializes the `CameraList`.  
-It then gets a camera, sets the video type and  
-framerate. Once the camera is started,  
-`get_latest_frame()` gets the most recent frame.
-A Numpy array is used to store the image and 
-matplotlib functions `imshow()` and `show()` are used
-to visualize the image. 
+The sample code below creates a `CameraList` and gets a reference to the `CameraManager`. Calling `get_camera_list()` initializes the `CameraList`. It then gets a camera, sets the video type and framerate. Once the camera is started, `get_latest_frame()` gets the most recent frame. A Numpy array is used to store the image and matplotlib functions `imshow()` and `show()` are used to visualize the image. 
 
 ```python
 import pycamera as p  
