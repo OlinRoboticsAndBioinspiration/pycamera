@@ -1,4 +1,4 @@
-pycamerasdk
+pycamera
 ===========
 
 Overview (08/12/2013)
