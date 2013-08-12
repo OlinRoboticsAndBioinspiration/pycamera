@@ -29,8 +29,11 @@ Example Usage
 -----------
 
 import pycamera as p
+
 pcl = p.PyCameraList()
+
 cm = p.CameraManager()
+
 cm.get _ camera _ list()
 
 _The order of operations in the above code is very important. Alternative
